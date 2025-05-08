@@ -1,5 +1,7 @@
 # Real-time Speech-to-Text in LiveKit with AssemblyAI
 
+*NOTE: This repository uses version 0.x of `livekit-agents`*
+
 This repository contains a minimal example of how to use AssemblyAI's real-time transcription API with LiveKit. See the companion blog [**How to add real-time Speech-to-Text to your LiveKit application**](https://www.assemblyai.com/blog/livekit-realtime-speech-to-text) for a full walkthrough.
 
 ![demo](demo.gif)
