@@ -1,15 +1,17 @@
-import asyncio
 import logging
 
 from dotenv import load_dotenv
-from livekit import rtc
+
 from livekit.agents import (
+    Agent,
+    AgentSession,
     AutoSubscribe,
     JobContext,
+    RoomOutputOptions,
+    StopResponse,
     WorkerOptions,
     cli,
-    stt,
-    transcription,
+    llm,
 )
 from livekit.plugins import assemblyai
 
@@ -17,55 +19,37 @@ load_dotenv()
 
 logger = logging.getLogger("transcriber")
 
+class Transcriber(Agent):
+    def __init__(self):
+        super().__init__(
+            instructions="not-needed",
+            stt=assemblyai.STT(),
+        )
+
+    async def on_user_turn_completed(self, chat_ctx: llm.ChatContext, new_message: llm.ChatMessage):
+        # Add any backend processing of transcripts here if needed
+        user_transcript = new_message.text_content
+        logger.info(f" -> {user_transcript}")
+
+        # Needed to stop the agent's default conversational loop
+        raise StopResponse()
+
+
 async def entrypoint(ctx: JobContext):
-    logger.info(f"Starting transcriber (speech to text) example, room: {ctx.room.name}")
-    stt_impl = assemblyai.STT()
-
-    @ctx.room.on("track_subscribed")
-    def on_track_subscribed(
-        track: rtc.Track,
-        publication: rtc.TrackPublication,
-        participant: rtc.RemoteParticipant,
-    ):
-        if track.kind == rtc.TrackKind.KIND_AUDIO:
-            asyncio.create_task(transcribe_track(participant, track))
-
-    async def transcribe_track(participant: rtc.RemoteParticipant, track: rtc.Track):
-        """
-        Handles the parallel tasks of sending audio to the STT service and 
-        forwarding transcriptions back to the app.
-        """
-        audio_stream = rtc.AudioStream(track)
-        stt_forwarder = transcription.STTSegmentsForwarder(
-            room=ctx.room, participant=participant, track=track
-        )
-
-        stt_stream = stt_impl.stream()
-
-        # Run tasks for audio input and transcription output in parallel
-        await asyncio.gather(
-            _handle_audio_input(audio_stream, stt_stream),
-            _handle_transcription_output(stt_stream, stt_forwarder),
-        )
-
-    async def _handle_audio_input(
-        audio_stream: rtc.AudioStream, stt_stream: stt.SpeechStream
-    ):
-        """Pushes audio frames to the speech-to-text stream."""
-        async for ev in audio_stream:
-            stt_stream.push_frame(ev.frame)
-
-    async def _handle_transcription_output(
-        stt_stream: stt.SpeechStream, stt_forwarder: transcription.STTSegmentsForwarder
-    ):
-        """Receives transcription events from the speech-to-text service."""
-        async for ev in stt_stream:
-            if ev.type == stt.SpeechEventType.FINAL_TRANSCRIPT:
-                print(" -> ", ev.alternatives[0].text)
-
-            stt_forwarder.update(ev)
-
+    logger.info(f"starting transcriber (speech to text) example, room: {ctx.room.name}")
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    session = AgentSession()
+
+    await session.start(
+        agent=Transcriber(),
+        room=ctx.room,
+        room_output_options=RoomOutputOptions(
+            # If you don't want to send the transcription back to the room, set this to False
+            transcription_enabled=True,
+            audio_enabled=False,
+        ),
+    )
 
 
 if __name__ == "__main__":
