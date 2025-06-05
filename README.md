@@ -2,7 +2,8 @@
 
 This repository contains a minimal example of how to use AssemblyAI's real-time transcription API with LiveKit. See the companion blog [**How to add real-time Speech-to-Text to your LiveKit application**](https://www.assemblyai.com/blog/livekit-realtime-speech-to-text) for a full walkthrough.
 
-![demo](demo.gif)
+https://github.com/user-attachments/assets/8ff6d224-bbd6-4f5e-8d68-719b95f8a337
+
 
 See the companion blog for more detailed instructions on how to set up and run this example, but here is the general overview:
 
